@@ -339,6 +339,46 @@ def test_aggregate_usage_from_spans_without_cached_tokens_omits_keys():
     assert TokenUsageKey.CACHE_CREATION_INPUT_TOKENS not in usage
 
 
+@pytest.mark.parametrize(
+    ("span_usage", "expected"),
+    [
+        (
+            {TokenUsageKey.INPUT_TOKENS: 1000},
+            {
+                TokenUsageKey.INPUT_TOKENS: 1000,
+                TokenUsageKey.OUTPUT_TOKENS: 0,
+                TokenUsageKey.TOTAL_TOKENS: 1000,
+            },
+        ),
+        (
+            {TokenUsageKey.INPUT_TOKENS: 10, TokenUsageKey.OUTPUT_TOKENS: 5},
+            {
+                TokenUsageKey.INPUT_TOKENS: 10,
+                TokenUsageKey.OUTPUT_TOKENS: 5,
+                TokenUsageKey.TOTAL_TOKENS: 15,
+            },
+        ),
+        (
+            {
+                TokenUsageKey.INPUT_TOKENS: 0,
+                TokenUsageKey.OUTPUT_TOKENS: 0,
+                TokenUsageKey.TOTAL_TOKENS: 0,
+            },
+            {
+                TokenUsageKey.INPUT_TOKENS: 0,
+                TokenUsageKey.OUTPUT_TOKENS: 0,
+                TokenUsageKey.TOTAL_TOKENS: 0,
+            },
+        ),
+    ],
+)
+def test_aggregate_usage_from_spans_derives_missing_total_tokens(span_usage, expected):
+    span = LiveSpan(create_mock_otel_span("trace_id", span_id=0, name="embed"), trace_id="tr-123")
+    span.set_attribute(SpanAttributeKey.CHAT_USAGE, span_usage)
+
+    assert aggregate_usage_from_spans([span]) == expected
+
+
 def test_aggregate_cost_from_spans():
     spans = [
         LiveSpan(create_mock_otel_span("trace_id", span_id=i, name=f"span_{i}"), trace_id="tr-123")
